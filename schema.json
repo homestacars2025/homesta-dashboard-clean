@@ -1,0 +1,502 @@
+[
+    {
+      "table_name": "booking_customer_balance",
+      "column_name": "booking_id",
+      "data_type": "bigint"
+    },
+    {
+      "table_name": "booking_customer_balance",
+      "column_name": "balance",
+      "data_type": "numeric"
+    },
+    {
+      "table_name": "booking_customer_summary",
+      "column_name": "booking_id",
+      "data_type": "bigint"
+    },
+    {
+      "table_name": "booking_customer_summary",
+      "column_name": "customer_name",
+      "data_type": "text"
+    },
+    {
+      "table_name": "booking_customer_summary",
+      "column_name": "plate_number",
+      "data_type": "text"
+    },
+    {
+      "table_name": "booking_customer_summary",
+      "column_name": "total_paid",
+      "data_type": "numeric"
+    },
+    {
+      "table_name": "booking_customer_summary",
+      "column_name": "total_charged",
+      "data_type": "numeric"
+    },
+    {
+      "table_name": "booking_customer_summary",
+      "column_name": "balance",
+      "data_type": "numeric"
+    },
+    {
+      "table_name": "bookings",
+      "column_name": "id",
+      "data_type": "bigint"
+    },
+    {
+      "table_name": "bookings",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone"
+    },
+    {
+      "table_name": "bookings",
+      "column_name": "car_id",
+      "data_type": "bigint"
+    },
+    {
+      "table_name": "bookings",
+      "column_name": "start_date",
+      "data_type": "date"
+    },
+    {
+      "table_name": "bookings",
+      "column_name": "end_date",
+      "data_type": "date"
+    },
+    {
+      "table_name": "bookings",
+      "column_name": "insurance_type",
+      "data_type": "text"
+    },
+    {
+      "table_name": "bookings",
+      "column_name": "notes",
+      "data_type": "text"
+    },
+    {
+      "table_name": "bookings",
+      "column_name": "pickup_location",
+      "data_type": "text"
+    },
+    {
+      "table_name": "bookings",
+      "column_name": "dropoff_location",
+      "data_type": "text"
+    },
+    {
+      "table_name": "bookings",
+      "column_name": "booking_number",
+      "data_type": "text"
+    },
+    {
+      "table_name": "bookings",
+      "column_name": "additional_driver_id",
+      "data_type": "text"
+    },
+    {
+      "table_name": "bookings",
+      "column_name": "customer_id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "bookings",
+      "column_name": "kabis_reported",
+      "data_type": "boolean"
+    },
+    {
+      "table_name": "bookings",
+      "column_name": "invoice_issued",
+      "data_type": "boolean"
+    },
+    {
+      "table_name": "bookings",
+      "column_name": "status",
+      "data_type": "USER-DEFINED"
+    },
+    {
+      "table_name": "bookings",
+      "column_name": "additional_services",
+      "data_type": "text"
+    },
+    {
+      "table_name": "car_availability",
+      "column_name": "id",
+      "data_type": "bigint"
+    },
+    {
+      "table_name": "car_availability",
+      "column_name": "investor_id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "car_availability",
+      "column_name": "status",
+      "data_type": "text"
+    },
+    {
+      "table_name": "car_availability",
+      "column_name": "availability",
+      "data_type": "boolean"
+    },
+    {
+      "table_name": "car_calendar",
+      "column_name": "id",
+      "data_type": "bigint"
+    },
+    {
+      "table_name": "car_calendar",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone"
+    },
+    {
+      "table_name": "car_calendar",
+      "column_name": "car_id",
+      "data_type": "bigint"
+    },
+    {
+      "table_name": "car_calendar",
+      "column_name": "start_date",
+      "data_type": "date"
+    },
+    {
+      "table_name": "car_calendar",
+      "column_name": "end_date",
+      "data_type": "date"
+    },
+    {
+      "table_name": "car_calendar",
+      "column_name": "booking_id",
+      "data_type": "bigint"
+    },
+    {
+      "table_name": "car_calendar",
+      "column_name": "notes",
+      "data_type": "text"
+    },
+    {
+      "table_name": "car_calendar",
+      "column_name": "created_by",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "car_calendar",
+      "column_name": "block_type",
+      "data_type": "USER-DEFINED"
+    },
+    {
+      "table_name": "car_photos",
+      "column_name": "id",
+      "data_type": "bigint"
+    },
+    {
+      "table_name": "car_photos",
+      "column_name": "car_id",
+      "data_type": "bigint"
+    },
+    {
+      "table_name": "car_photos",
+      "column_name": "file_path",
+      "data_type": "text"
+    },
+    {
+      "table_name": "car_photos",
+      "column_name": "is_primary",
+      "data_type": "boolean"
+    },
+    {
+      "table_name": "car_photos",
+      "column_name": "sort_order",
+      "data_type": "integer"
+    },
+    {
+      "table_name": "car_photos",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone"
+    },
+    {
+      "table_name": "car_pricing_tiers",
+      "column_name": "id",
+      "data_type": "integer"
+    },
+    {
+      "table_name": "car_pricing_tiers",
+      "column_name": "car_id",
+      "data_type": "integer"
+    },
+    {
+      "table_name": "car_pricing_tiers",
+      "column_name": "min_days",
+      "data_type": "integer"
+    },
+    {
+      "table_name": "car_pricing_tiers",
+      "column_name": "max_days",
+      "data_type": "integer"
+    },
+    {
+      "table_name": "car_pricing_tiers",
+      "column_name": "discount_percent",
+      "data_type": "numeric"
+    },
+    {
+      "table_name": "car_pricing_tiers",
+      "column_name": "is_active",
+      "data_type": "boolean"
+    },
+    {
+      "table_name": "car_pricing_tiers",
+      "column_name": "created_at",
+      "data_type": "timestamp without time zone"
+    },
+    {
+      "table_name": "car_pricing_tiers",
+      "column_name": "updated_at",
+      "data_type": "timestamp without time zone"
+    },
+    {
+      "table_name": "car_primary_photos",
+      "column_name": "car_id",
+      "data_type": "bigint"
+    },
+    {
+      "table_name": "car_primary_photos",
+      "column_name": "file_path",
+      "data_type": "text"
+    },
+    {
+      "table_name": "cars",
+      "column_name": "id",
+      "data_type": "bigint"
+    },
+    {
+      "table_name": "cars",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone"
+    },
+    {
+      "table_name": "cars",
+      "column_name": "plate_number",
+      "data_type": "text"
+    },
+    {
+      "table_name": "cars",
+      "column_name": "investor_id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "cars",
+      "column_name": "model_group_id",
+      "data_type": "bigint"
+    },
+    {
+      "table_name": "cars_registration",
+      "column_name": "id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "cars_registration",
+      "column_name": "car_id",
+      "data_type": "bigint"
+    },
+    {
+      "table_name": "cars_registration",
+      "column_name": "manufacture_year",
+      "data_type": "integer"
+    },
+    {
+      "table_name": "cars_registration",
+      "column_name": "car_package",
+      "data_type": "text"
+    },
+    {
+      "table_name": "cars_registration",
+      "column_name": "insurance_expiry",
+      "data_type": "date"
+    },
+    {
+      "table_name": "cars_registration",
+      "column_name": "inspection_expiry",
+      "data_type": "date"
+    },
+    {
+      "table_name": "cars_registration",
+      "column_name": "purchase_contract_url",
+      "data_type": "text"
+    },
+    {
+      "table_name": "cars_registration",
+      "column_name": "purchase_invoice_url",
+      "data_type": "text"
+    },
+    {
+      "table_name": "cars_registration",
+      "column_name": "insurance_file_url",
+      "data_type": "text"
+    },
+    {
+      "table_name": "cars_registration",
+      "column_name": "ruhsat_url",
+      "data_type": "text"
+    },
+    {
+      "table_name": "cars_registration",
+      "column_name": "created_at",
+      "data_type": "timestamp without time zone"
+    },
+    {
+      "table_name": "cars_registration",
+      "column_name": "purchase_date",
+      "data_type": "date"
+    },
+    {
+      "table_name": "cars_tracking",
+      "column_name": "id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "cars_tracking",
+      "column_name": "car_id",
+      "data_type": "bigint"
+    },
+    {
+      "table_name": "cars_tracking",
+      "column_name": "plate_number",
+      "data_type": "text"
+    },
+    {
+      "table_name": "cars_tracking",
+      "column_name": "mileage",
+      "data_type": "integer"
+    },
+    {
+      "table_name": "cars_tracking",
+      "column_name": "last_update",
+      "data_type": "timestamp with time zone"
+    },
+    {
+      "table_name": "cars_tracking",
+      "column_name": "source",
+      "data_type": "text"
+    },
+    {
+      "table_name": "cars_tracking",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone"
+    },
+    {
+      "table_name": "cars_tracking",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone"
+    },
+    {
+      "table_name": "customer_accounting_ledger",
+      "column_name": "id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "customer_accounting_ledger",
+      "column_name": "booking_id",
+      "data_type": "bigint"
+    },
+    {
+      "table_name": "customer_accounting_ledger",
+      "column_name": "customer_id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "customer_accounting_ledger",
+      "column_name": "car_id",
+      "data_type": "integer"
+    },
+    {
+      "table_name": "customer_accounting_ledger",
+      "column_name": "type",
+      "data_type": "text"
+    },
+    {
+      "table_name": "customer_accounting_ledger",
+      "column_name": "description",
+      "data_type": "text"
+    },
+    {
+      "table_name": "customer_accounting_ledger",
+      "column_name": "amount",
+      "data_type": "numeric"
+    },
+    {
+      "table_name": "customer_accounting_ledger",
+      "column_name": "direction",
+      "data_type": "USER-DEFINED"
+    },
+    {
+      "table_name": "customer_accounting_ledger",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone"
+    },
+    {
+      "table_name": "customer_accounting_ledger",
+      "column_name": "created_by",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "customer_accounting_ledger",
+      "column_name": "transaction_type",
+      "data_type": "text"
+    },
+    {
+      "table_name": "customers",
+      "column_name": "id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "customers",
+      "column_name": "notes",
+      "data_type": "text"
+    },
+    {
+      "table_name": "customers",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone"
+    },
+    {
+      "table_name": "customers",
+      "column_name": "first_name",
+      "data_type": "text"
+    },
+    {
+      "table_name": "customers",
+      "column_name": "last_name",
+      "data_type": "text"
+    },
+    {
+      "table_name": "customers",
+      "column_name": "nationality",
+      "data_type": "text"
+    },
+    {
+      "table_name": "customers",
+      "column_name": "id_type",
+      "data_type": "text"
+    },
+    {
+      "table_name": "customers",
+      "column_name": "id_number",
+      "data_type": "text"
+    },
+    {
+      "table_name": "customers",
+      "column_name": "phone",
+      "data_type": "text"
+    },
+    {
+      "table_name": "customers",
+      "column_name": "driving_license",
+      "data_type": "text"
+    },
+    {
+      "table_name": "customers",
+      "column_name": "address",
+      "data_type": "text"
+    }
+  ]
