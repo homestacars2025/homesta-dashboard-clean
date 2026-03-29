@@ -64,36 +64,31 @@ const getStatusLabel = (status: string | null) => {
 }
 
 // Preview color based on hovered action
-// EXACT COLOR MAPPING: booking=green, maintenance=grey, selling=red, replacement=orange
+// booking=green, selling=yellow, maintenance=gray, replacement=orange
 const getPreviewStyle = (action: "booking" | "maintenance" | "selling" | "replacement" | null) => {
   const baseClasses = "h-11 w-11 min-w-[44px] max-w-[48px] rounded-xl transition-all duration-200 cursor-pointer text-center text-xs font-semibold border-2 relative shadow-sm"
   
   switch (action) {
     case "booking":
-      // GREEN for booking
       return `${baseClasses} bg-green-100 border-green-400 text-green-800`
-    case "maintenance":
-      // GREY for maintenance
-      return `${baseClasses} bg-gray-100 border-gray-400 text-gray-700`
     case "selling":
-      // RED for selling
-      return `${baseClasses} bg-red-100 border-red-400 text-red-700`
+      return `${baseClasses} bg-yellow-100 border-yellow-400 text-yellow-800`
+    case "maintenance":
+      return `${baseClasses} bg-gray-100 border-gray-400 text-gray-700`
     case "replacement":
-      // ORANGE for replacement
       return `${baseClasses} bg-orange-100 border-orange-400 text-orange-800`
     default:
-      // Neutral preview - light gray with dashed border
       return `${baseClasses} bg-gray-50 border-gray-300 border-dashed text-gray-700`
   }
 }
 
-// Calendar block colors based on block_type from car_calender table ONLY
-// EXACT COLOR MAPPING:
-// - NO record = RED (parking)
-// - booked_confirmed = GREEN
-// - selling = RED
-// - maintenance = GREY
+// Calendar block colors based on block_type from car_calender table
+// COLOR MAPPING:
+// - booked_confirmed / booked_pending = GREEN
+// - selling = YELLOW
+// - maintenance = GRAY
 // - replacement = ORANGE
+// - NO record = RED (parking)
 const getBlockStyle = (blockType: string) => {
   const baseClasses = "h-11 w-11 min-w-[44px] max-w-[48px] rounded-xl transition-all cursor-pointer text-center text-xs font-semibold border relative"
   
@@ -101,14 +96,15 @@ const getBlockStyle = (blockType: string) => {
   
   switch (type) {
     case "booked_confirmed":
-      // GREEN for confirmed bookings
+    case "booked_pending":
+      // GREEN for bookings
       return `${baseClasses} bg-green-100 border-green-300 text-green-800 hover:bg-green-200`
-    case "maintenance":
-      // GREY for maintenance
-      return `${baseClasses} bg-gray-100 border-gray-300 text-gray-700 hover:bg-gray-200`
     case "selling":
-      // RED for selling
-      return `${baseClasses} bg-red-100 border-red-300 text-red-700 hover:bg-red-200`
+      // YELLOW for selling
+      return `${baseClasses} bg-yellow-100 border-yellow-300 text-yellow-800 hover:bg-yellow-200`
+    case "maintenance":
+      // GRAY for maintenance
+      return `${baseClasses} bg-gray-100 border-gray-300 text-gray-700 hover:bg-gray-200`
     case "replacement":
       // ORANGE for replacement
       return `${baseClasses} bg-orange-100 border-orange-300 text-orange-800 hover:bg-orange-200`
@@ -306,80 +302,48 @@ export default function AvailabilityPage() {
     })
   }, [currentMonth])
 
-  // Precompute blocksMap: group blocks by car_id for O(1) lookup
-  // Memoized ONLY by calendarBlocks - no other dependencies
-  // Use Number(car_id) to ensure consistent numeric keys
-  const blocksMap = useMemo(() => {
-    const map: Record<number, CalendarBlock[]> = {}
-    calendarBlocks.forEach((b) => {
-      const carIdNum = Number(b.car_id)
-      if (!map[carIdNum]) map[carIdNum] = []
-      map[carIdNum].push(b)
-    })
-    console.log("[v0] blocksMap built:", { keys: Object.keys(map), totalBlocks: calendarBlocks.length })
-    return map
-  }, [calendarBlocks])
-
-  // Plain function - NOT memoized to avoid dependency loops
-  // Uses blocksMap directly from closure
+  // Simple getBlockForCell - no memoization, just find matching block
   function getBlockForCell(carId: number, date: Date): CalendarBlock | null {
-    // Ensure numeric car_id comparison
-    const carIdNum = Number(carId)
-    const carBlocks = blocksMap[carIdNum] || []
-    if (carBlocks.length === 0) return null
+    const dayStr = format(date, "yyyy-MM-dd")
     
-    // Convert cell date to YYYY-MM-DD using toISOString for consistent format
-    const dayStr = new Date(date).toISOString().split("T")[0]
-    
-    // Find block where dayStr falls within start_date and end_date (inclusive)
-    const found = carBlocks.find((b) => {
-      const start = new Date(b.start_date).toISOString().split("T")[0]
-      const end = new Date(b.end_date).toISOString().split("T")[0]
-      
-      // Debug log
-      console.log("[v0] getBlockForCell:", { carId: carIdNum, blockCarId: b.car_id, dayStr, start, end, block_type: b.block_type })
-      
-      return dayStr >= start && dayStr <= end
-    })
-    
-    return found || null
+    // Find block where car_id matches and date is between start_date and end_date
+    return calendarBlocks.find((b) => 
+      b.car_id === carId && 
+      dayStr >= b.start_date && 
+      dayStr <= b.end_date
+    ) || null
   }
 
-  // Check if cell is selected - must be defined before getCellStyle
-  const isCellSelected = useCallback(
-    (carId: number, date: Date): boolean => {
-      if (!selection || selection.carId !== carId || !selection.startDate) return false
+  // Check if cell is selected
+  function isCellSelected(carId: number, date: Date): boolean {
+    if (!selection || selection.carId !== carId || !selection.startDate) return false
 
-      if (!selection.endDate) {
-        return isSameDay(date, selection.startDate)
-      }
+    if (!selection.endDate) {
+      return isSameDay(date, selection.startDate)
+    }
 
-      const start = selection.startDate <= selection.endDate ? selection.startDate : selection.endDate
-      const end = selection.startDate <= selection.endDate ? selection.endDate : selection.startDate
+    const start = selection.startDate <= selection.endDate ? selection.startDate : selection.endDate
+    const end = selection.startDate <= selection.endDate ? selection.endDate : selection.startDate
 
-      return date >= start && date <= end
-    },
-    [selection]
-  )
+    return date >= start && date <= end
+  }
 
   // Get cell style based on block and preview state
-  // Dependencies: blocksMap (via getBlockForCell closure), hoveredAction, isCellSelected
-  const getCellStyle = useCallback(
-    (carId: number, date: Date) => {
-      const block = getBlockForCell(carId, date)
-      const isSelected = isCellSelected(carId, date)
-      const isToday = format(date, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd")
-      const todayRing = isToday ? "ring-2 ring-blue-400 ring-offset-1" : ""
+  function getCellStyle(carId: number, date: Date) {
+    const block = getBlockForCell(carId, date)
+    const isSelected = isCellSelected(carId, date)
+    const isToday = format(date, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd")
+    const todayRing = isToday ? "ring-2 ring-blue-400 ring-offset-1" : ""
 
-      // If cell is selected, use preview color based on hovered action
-      if (isSelected) {
-        return `${getPreviewStyle(hoveredAction)} ${todayRing}`
-      }
+    // If cell is selected, use preview color based on hovered action
+    if (isSelected) {
+      return `${getPreviewStyle(hoveredAction)} ${todayRing}`
+    }
 
-      // Block found - use color based on block_type
-      if (block) {
-        return `${getBlockStyle(block.block_type)} ${todayRing}`
-      }
+    // Block found - use color based on block_type
+    if (block) {
+      return `${getBlockStyle(block.block_type)} ${todayRing}`
+    }
 
       // Default = Parking (RED) - no record in car_calender means parking
       return `h-11 w-11 min-w-[44px] max-w-[48px] rounded-xl transition-all duration-200 cursor-pointer text-center text-xs font-semibold border relative ${todayRing} bg-red-100 border-red-300 text-red-700 hover:bg-red-200`
@@ -672,16 +636,19 @@ export default function AvailabilityPage() {
               </SelectContent>
             </Select>
 
-            {/* Legend - EXACT colors from car_calender block_type */}
-            {/* parking/no record=RED, booked_confirmed=GREEN, maintenance=GREY, selling=RED, replacement=ORANGE */}
+            {/* Legend */}
             <div className="flex items-center gap-4 ml-auto text-xs flex-wrap">
               <div className="flex items-center gap-1.5">
                 <div className="w-3 h-3 rounded bg-red-400" />
-                <span className="text-gray-600">Parking/Selling</span>
+                <span className="text-gray-600">Parking</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-3 h-3 rounded bg-green-400" />
                 <span className="text-gray-600">Booked</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded bg-yellow-400" />
+                <span className="text-gray-600">Selling</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-3 h-3 rounded bg-gray-400" />
@@ -733,7 +700,7 @@ export default function AvailabilityPage() {
                   onClick={() => handleCreateBlock("selling")}
                   size="sm"
                   variant="outline"
-                  className="border-red-300 hover:bg-red-100 hover:border-red-400 rounded-lg transition-all duration-200"
+                  className="border-yellow-300 hover:bg-yellow-100 hover:border-yellow-400 rounded-lg transition-all duration-200"
                   onMouseEnter={() => setHoveredAction("selling")}
                   onMouseLeave={() => setHoveredAction(null)}
                 >
