@@ -216,23 +216,35 @@ export default function AvailabilityPage() {
       // Fetch ALL blocks from car_calender table ONLY
       // This includes: booked_confirmed, maintenance, selling, replacement
       // NO data from bookings table - calendar relies 100% on car_calender
-      const { data: calenderData, error: calenderError } = await supabase
-        .from("car_calender")
-        .select("id, car_id, start_date, end_date, block_type")
-        .in("car_id", carIds)
-        .lte("start_date", endDate)
-        .gte("end_date", startDate)
+      let calendarBlocks: any[] = []
+      
+      try {
+        const { data: calenderData, error: calenderError } = await supabase
+          .from("car_calender")
+          .select("id, car_id, start_date, end_date, block_type")
+          .in("car_id", carIds)
+          .lte("start_date", endDate)
+          .gte("end_date", startDate)
 
-      if (calenderError) throw calenderError
+        console.log("[v0] car_calender query result:", { data: calenderData, error: calenderError })
 
-      // Convert car_calender records to calendar block format
-      const calendarBlocks = (calenderData || []).map((c: any) => ({
-        id: c.id,
-        car_id: c.car_id,
-        start_date: c.start_date,
-        end_date: c.end_date,
-        block_type: c.block_type
-      }))
+        if (calenderError) {
+          // Log error but don't throw - calendar should still render with empty blocks
+          console.error("[v0] car_calender query error:", calenderError)
+        } else {
+          // Convert car_calender records to calendar block format
+          calendarBlocks = (calenderData || []).map((c: any) => ({
+            id: c.id,
+            car_id: c.car_id,
+            start_date: c.start_date,
+            end_date: c.end_date,
+            block_type: c.block_type
+          }))
+        }
+      } catch (calErr) {
+        // Gracefully handle car_calender errors - show empty calendar
+        console.error("[v0] car_calender fetch failed:", calErr)
+      }
 
       if (reqId !== reqRef.current) return
 
