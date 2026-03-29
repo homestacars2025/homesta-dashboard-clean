@@ -114,7 +114,14 @@ const getBlockStyle = (blockType: string) => {
   }
 }
 
+// DEBUG: Render counter
+let renderCount = 0
+let getBlockForCellCallCount = 0
+
 export default function AvailabilityPage() {
+  renderCount++
+  console.log("[v0] RENDER #" + renderCount)
+  
   const { user, initialAuthChecked } = useAuth()
   const router = useRouter()
 
@@ -161,6 +168,7 @@ export default function AvailabilityPage() {
 
   // Load data from car_availability view and car_calendar table
   const loadData = useCallback(async () => {
+    console.log("[v0] loadData CALLED")
     if (!initialAuthChecked || !user) return
     // Guard: ensure currentMonth is valid before fetching
     if (!(currentMonth instanceof Date) || isNaN(currentMonth.getTime())) {
@@ -245,6 +253,7 @@ export default function AvailabilityPage() {
 
       if (reqId !== reqRef.current) return
 
+      console.log("[v0] DATA LOADED - cars:", carsWithImages.length, "blocks:", fetchedBlocks.length)
       setCars(carsWithImages)
       setCalendarBlocks(fetchedBlocks)
       hasLoadedOnceRef.current = true
@@ -281,6 +290,7 @@ export default function AvailabilityPage() {
   }, [initialAuthChecked, currentMonth])
 
   useEffect(() => {
+    console.log("[v0] useEffect triggered - isReady:", isReady, "user:", !!user)
     if (isReady && user) {
       loadData()
     } else if (initialAuthChecked && !user) {
@@ -296,14 +306,17 @@ export default function AvailabilityPage() {
   }, isFetchingRef)
 
   const calendarDays = useMemo(() => {
-    return eachDayOfInterval({
+    const days = eachDayOfInterval({
       start: startOfMonth(currentMonth),
       end: endOfMonth(currentMonth),
     })
+    console.log("[v0] calendarDays computed - days:", days.length)
+    return days
   }, [currentMonth])
 
   // Simple getBlockForCell - no memoization, just find matching block
   function getBlockForCell(carId: number, date: Date): CalendarBlock | null {
+    getBlockForCellCallCount++
     const dayStr = format(date, "yyyy-MM-dd")
     
     // Find block where car_id matches and date is between start_date and end_date
@@ -313,6 +326,10 @@ export default function AvailabilityPage() {
       dayStr <= b.end_date
     ) || null
   }
+  
+  // Log call count at end of render
+  console.log("[v0] getBlockForCell calls this render:", getBlockForCellCallCount)
+  getBlockForCellCallCount = 0 // Reset for next render
 
   // Check if cell is selected
   function isCellSelected(carId: number, date: Date): boolean {
