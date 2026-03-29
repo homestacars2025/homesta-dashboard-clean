@@ -323,21 +323,30 @@ export default function AvailabilityPage() {
 
   // Get block for a specific car and date
   // Checks if dateStr is between start_date and end_date (inclusive)
+  // IMPORTANT: All dates converted to YYYY-MM-DD string format before comparison
   const getBlockForCell = useCallback(
     (carId: number, date: Date): CalendarBlock | null => {
-      const dateStr = format(date, "yyyy-MM-dd")
-      
-      // Debug: log total blocks available and search for this car
-      const blocksForCar = calendarBlocks.filter((b) => b.car_id === carId)
+      // Convert cell date to YYYY-MM-DD string
+      const cellDateStr = date.toISOString().split("T")[0]
       
       // Find block where this date falls between start_date and end_date (inclusive)
       const block = calendarBlocks.find((b) => {
-        const matches = b.car_id === carId && dateStr >= b.start_date && dateStr <= b.end_date
-        return matches
+        if (b.car_id !== carId) return false
+        
+        // Convert block dates to YYYY-MM-DD strings for proper comparison
+        const startStr = new Date(b.start_date).toISOString().split("T")[0]
+        const endStr = new Date(b.end_date).toISOString().split("T")[0]
+        
+        const match = cellDateStr >= startStr && cellDateStr <= endStr
+        
+        // Debug log for date comparison
+        console.log("[v0] Date comparison:", { cellDateStr, startStr, endStr, match, block_type: b.block_type, car_id: b.car_id })
+        
+        return match
       }) || null
       
-      // Debug log for each day
-      console.log(`[v0] getBlockForCell: date=${dateStr}, carId=${carId}, totalBlocks=${calendarBlocks.length}, blocksForCar=${blocksForCar.length}, foundBlock:`, block)
+      // Debug log result
+      console.log(`[v0] getBlockForCell RESULT: date=${cellDateStr}, carId=${carId}, foundBlock:`, block?.block_type || "NO_RECORD")
       
       return block
     },
