@@ -345,11 +345,9 @@ export default function AvailabilityPage() {
       return `${getBlockStyle(block.block_type)} ${todayRing}`
     }
 
-      // Default = Parking (RED) - no record in car_calender means parking
-      return `h-11 w-11 min-w-[44px] max-w-[48px] rounded-xl transition-all duration-200 cursor-pointer text-center text-xs font-semibold border relative ${todayRing} bg-red-100 border-red-300 text-red-700 hover:bg-red-200`
-    },
-    [blocksMap, hoveredAction, isCellSelected]
-  )
+    // Default = Parking (RED) - no record in car_calender means parking
+    return `h-11 w-11 min-w-[44px] max-w-[48px] rounded-xl transition-all duration-200 cursor-pointer text-center text-xs font-semibold border relative ${todayRing} bg-red-100 border-red-300 text-red-700 hover:bg-red-200`
+  }
 
   const handleCellClick = (carId: number, date: Date) => {
     const block = getBlockForCell(carId, date)
