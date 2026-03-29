@@ -322,7 +322,7 @@ export default function AvailabilityPage() {
   }, [calendarBlocks])
 
   // Get block for a specific car and date
-  // Checks if dateStr is between start_date and end_date (inclusive)
+  // Uses .filter() to find ALL matching blocks, then returns first match
   // IMPORTANT: Convert car_id to number (UI may pass string, DB returns number)
   const getBlockForCell = useCallback(
     (carId: number, date: Date): CalendarBlock | null => {
@@ -331,13 +331,10 @@ export default function AvailabilityPage() {
       // Ensure carId is a number (UI might pass string)
       const carIdNum = Number(carId)
       
-      // Find block where this date falls between start_date and end_date (inclusive)
-      const block = calendarBlocks.find((b) => {
+      // Use .filter() instead of .find() to handle multiple blocks/ranges
+      const matches = calendarBlocks.filter((b) => {
         // Convert block.car_id to number for type-safe comparison
         const blockCarIdNum = Number(b.car_id)
-        
-        // Debug: log both car_id values and their types
-        console.log("[v0] car_id comparison:", { carIdNum, blockCarIdNum, carIdType: typeof carId, blockCarIdType: typeof b.car_id, match: carIdNum === blockCarIdNum })
         
         // Check car_id match first
         if (carIdNum !== blockCarIdNum) return false
@@ -346,18 +343,15 @@ export default function AvailabilityPage() {
         const startStr = new Date(b.start_date).toISOString().split("T")[0]
         const endStr = new Date(b.end_date).toISOString().split("T")[0]
         
-        const dateMatch = cellDateStr >= startStr && cellDateStr <= endStr
-        
-        // Debug log for date comparison
-        console.log("[v0] Date match:", { cellDateStr, startStr, endStr, dateMatch, block_type: b.block_type })
-        
-        return dateMatch
-      }) || null
+        // Check if cellDate falls within block date range (inclusive)
+        return cellDateStr >= startStr && cellDateStr <= endStr
+      })
       
-      // Debug log result
-      console.log(`[v0] getBlockForCell RESULT: date=${cellDateStr}, carId=${carIdNum}, foundBlock:`, block?.block_type || "NO_RECORD")
+      // Debug: log all matches found
+      console.log("[v0] MATCHES:", { cellDateStr, carIdNum, matchCount: matches.length, matches })
       
-      return block
+      // Return first match or null
+      return matches[0] || null
     },
     [calendarBlocks]
   )
