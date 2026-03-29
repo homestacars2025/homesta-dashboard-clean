@@ -307,7 +307,7 @@ export default function AvailabilityPage() {
   }, [currentMonth])
 
   // Precompute blocksMap: group blocks by car_id for O(1) lookup
-  // This avoids scanning ALL blocks for every cell render
+  // Memoized ONLY by calendarBlocks - no other dependencies
   const blocksMap = useMemo(() => {
     const map: Record<number, CalendarBlock[]> = {}
     calendarBlocks.forEach((b) => {
@@ -317,24 +317,21 @@ export default function AvailabilityPage() {
     return map
   }, [calendarBlocks])
 
-  // Get block for a specific car and date - uses precomputed blocksMap
-  // O(1) car lookup + small array scan instead of O(n) full scan
-  const getBlockForCell = useCallback(
-    (carId: number, date: Date): CalendarBlock | null => {
-      const carBlocks = blocksMap[carId] || []
-      if (carBlocks.length === 0) return null
-      
-      // Convert cell date to YYYY-MM-DD string for comparison
-      const cellDateStr = format(date, "yyyy-MM-dd")
-      
-      // Find block where cellDate falls within start_date and end_date (inclusive)
-      return carBlocks.find((b) => 
-        cellDateStr >= b.start_date && 
-        cellDateStr <= b.end_date
-      ) || null
-    },
-    [blocksMap]
-  )
+  // Plain function - NOT memoized to avoid dependency loops
+  // Uses blocksMap directly from closure
+  function getBlockForCell(carId: number, date: Date): CalendarBlock | null {
+    const carBlocks = blocksMap[carId] || []
+    if (carBlocks.length === 0) return null
+    
+    // Convert cell date to YYYY-MM-DD string for comparison
+    const cellDateStr = format(date, "yyyy-MM-dd")
+    
+    // Find block where cellDate falls within start_date and end_date (inclusive)
+    return carBlocks.find((b) => 
+      cellDateStr >= b.start_date && 
+      cellDateStr <= b.end_date
+    ) || null
+  }
 
   // Check if cell is selected - must be defined before getCellStyle
   const isCellSelected = useCallback(
@@ -354,6 +351,7 @@ export default function AvailabilityPage() {
   )
 
   // Get cell style based on block and preview state
+  // Dependencies: blocksMap (via getBlockForCell closure), hoveredAction, isCellSelected
   const getCellStyle = useCallback(
     (carId: number, date: Date) => {
       const block = getBlockForCell(carId, date)
@@ -374,7 +372,7 @@ export default function AvailabilityPage() {
       // Default = Parking (RED) - no record in car_calender means parking
       return `h-11 w-11 min-w-[44px] max-w-[48px] rounded-xl transition-all duration-200 cursor-pointer text-center text-xs font-semibold border relative ${todayRing} bg-red-100 border-red-300 text-red-700 hover:bg-red-200`
     },
-    [getBlockForCell, hoveredAction, isCellSelected]
+    [blocksMap, hoveredAction, isCellSelected]
   )
 
   const handleCellClick = (carId: number, date: Date) => {
