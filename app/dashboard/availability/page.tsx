@@ -114,13 +114,8 @@ const getBlockStyle = (blockType: string) => {
   }
 }
 
-// DEBUG: Render counter
-let renderCount = 0
-let getBlockForCellCallCount = 0
-
 export default function AvailabilityPage() {
-  renderCount++
-  console.log("[v0] RENDER #" + renderCount)
+  console.log("RENDER")
   
   const { user, initialAuthChecked } = useAuth()
   const router = useRouter()
@@ -129,7 +124,6 @@ export default function AvailabilityPage() {
   const investorId = user?.investorId
 
   // State
-  const [isReady, setIsReady] = useState(false) // Track if state is fully initialized
   const [cars, setCars] = useState<CarAvailability[]>([])
   const [calendarBlocks, setCalendarBlocks] = useState<CalendarBlock[]>([])
   const [loading, setLoading] = useState(true)
@@ -138,7 +132,7 @@ export default function AvailabilityPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
 
-  const [currentMonth, setCurrentMonth] = useState(() => new Date()) // Use initializer
+  const [currentMonth, setCurrentMonth] = useState(() => new Date())
 
   const [selection, setSelection] = useState<{
     carId: number
@@ -158,44 +152,23 @@ export default function AvailabilityPage() {
     notes: "",
   })
 
-  // Hovered action for preview color
   const [hoveredAction, setHoveredAction] = useState<"booking" | "maintenance" | "selling" | "replacement" | null>(null)
 
-  const reqRef = useRef(0)
-  const loadDataRef = useRef<() => void>(() => {})
-  const isFetchingRef = useRef(false)
-  const hasLoadedOnceRef = useRef(false)
+  const hasLoadedRef = useRef(false)
+  const currentMonthRef = useRef(currentMonth)
+  currentMonthRef.current = currentMonth
 
-  // Load data from car_availability view and car_calendar table
+  // Load data function - uses ref for currentMonth to avoid dependency
   const loadData = useCallback(async () => {
-    console.log("[v0] loadData CALLED")
+    const month = currentMonthRef.current
     if (!initialAuthChecked || !user) return
-    // Guard: ensure currentMonth is valid before fetching
-    if (!(currentMonth instanceof Date) || isNaN(currentMonth.getTime())) {
-      return
-    }
-    const reqId = ++reqRef.current
-    isFetchingRef.current = true
-    if (!hasLoadedOnceRef.current) setLoading(true)
-    setError(null)
-
-    const safetyTimer = setTimeout(() => {
-      if (reqId === reqRef.current) {
-        setLoading(false)
-        setError("Request timed out. Please retry.")
-      }
-    }, 10000)
-
+    
     try {
       const supabase = getSupabaseBrowserClient()
-      const startDate = format(startOfMonth(currentMonth), "yyyy-MM-dd")
-      const endDate = format(endOfMonth(currentMonth), "yyyy-MM-dd")
+      const startDate = format(startOfMonth(month), "yyyy-MM-dd")
+      const endDate = format(endOfMonth(month), "yyyy-MM-dd")
 
-      // Proper data source separation:
-      // 1. cars table + model_group JOIN for: id, plate_number, model_group_name, image_url
-      // 2. car_availability view ONLY for: status
-
-      // 1. Query cars table with model_group join
+      // Query cars table with model_group join
       const { data: carsData, error: carsError } = await supabase
         .from("cars")
         .select("id, plate_number, model_group_id, model_group(id, name, image_url)")
@@ -205,19 +178,17 @@ export default function AvailabilityPage() {
 
       const carIds = (carsData || []).map((c: any) => c.id)
 
-      // 2. Query car_availability view ONLY for status
+      // Query car_availability view for status
       const { data: availabilityData } = await supabase
         .from("car_availability")
         .select("id, status")
         .in("id", carIds)
 
-      // Create status map
       const statusMap = new Map<number, string | null>()
       ;(availabilityData || []).forEach((a: { id: number; status: string | null }) => {
         statusMap.set(a.id, a.status)
       })
 
-      // Merge data - image_url from model_group, status from car_availability
       const carsWithImages = (carsData || []).map((car: any) => ({
         car_id: car.id,
         plate_number: car.plate_number,
@@ -226,10 +197,8 @@ export default function AvailabilityPage() {
         status: statusMap.get(car.id) || null
       }))
 
-      // Fetch ALL blocks from car_calender table ONCE
-      // Simple query - no complex JOINs, just get all blocks for date range
+      // Fetch blocks from car_calender table
       let fetchedBlocks: CalendarBlock[] = []
-
       try {
         const { data: calenderData, error: calenderError } = await supabase
           .from("car_calender")
@@ -238,7 +207,6 @@ export default function AvailabilityPage() {
           .gte("end_date", startDate)
 
         if (!calenderError && calenderData) {
-          // Map to CalendarBlock format - car_id stays as-is from DB
           fetchedBlocks = calenderData.map((c: any) => ({
             id: c.id,
             car_id: c.car_id,
@@ -248,88 +216,65 @@ export default function AvailabilityPage() {
           }))
         }
       } catch (calErr) {
-        // Gracefully handle car_calender errors - render with empty blocks
+        // Gracefully handle errors
       }
 
-      if (reqId !== reqRef.current) return
-
-      console.log("[v0] DATA LOADED - cars:", carsWithImages.length, "blocks:", fetchedBlocks.length)
       setCars(carsWithImages)
       setCalendarBlocks(fetchedBlocks)
-      hasLoadedOnceRef.current = true
     } catch (err: any) {
-      if (reqId !== reqRef.current) return
       console.error("Error loading data:", err)
-      if (!hasLoadedOnceRef.current) {
-        setError("Failed to load calendar data. Please try again.")
-        toast({
-          title: "Error",
-          description: "Failed to load calendar data",
-          variant: "destructive",
-        })
-      }
+      setError("Failed to load calendar data.")
     } finally {
-      clearTimeout(safetyTimer)
-      if (reqId === reqRef.current) {
-        setLoading(false)
-        isFetchingRef.current = false
-      }
+      setLoading(false)
     }
-  }, [currentMonth, initialAuthChecked, user, toast])
+  }, [initialAuthChecked, user])
 
-  // Keep ref updated to latest loadData for visibility refresh
+  // Load data ONCE on mount when user is ready
   useEffect(() => {
-    loadDataRef.current = loadData
-  }, [loadData])
-
-  // Mark component as ready once auth is checked and currentMonth is valid
-  useEffect(() => {
-    if (initialAuthChecked && currentMonth instanceof Date && !isNaN(currentMonth.getTime())) {
-      setIsReady(true)
-    }
-  }, [initialAuthChecked, currentMonth])
-
-  useEffect(() => {
-    console.log("[v0] useEffect triggered - isReady:", isReady, "user:", !!user)
-    if (isReady && user) {
+    if (initialAuthChecked && user && !hasLoadedRef.current) {
+      hasLoadedRef.current = true
       loadData()
     } else if (initialAuthChecked && !user) {
       setLoading(false)
     }
-  }, [loadData, isReady, user])
+  }, [initialAuthChecked, user, loadData])
 
-  // Refresh data when tab becomes visible - pass isFetchingRef to skip if fetch in progress
-  useVisibilityRefresh(() => {
-    if (!isReady || !user) return
-    if (!(currentMonth instanceof Date) || isNaN(currentMonth.getTime())) return
-    loadDataRef.current()
-  }, isFetchingRef)
+  // Reload when month changes (separate effect)
+  useEffect(() => {
+    if (hasLoadedRef.current) {
+      loadData()
+    }
+  }, [currentMonth])
 
+  // Memoize calendarDays
   const calendarDays = useMemo(() => {
-    const days = eachDayOfInterval({
+    return eachDayOfInterval({
       start: startOfMonth(currentMonth),
       end: endOfMonth(currentMonth),
     })
-    console.log("[v0] calendarDays computed - days:", days.length)
-    return days
   }, [currentMonth])
 
-  // Simple getBlockForCell - no memoization, just find matching block
+  // Memoize blocksMap for O(1) lookup by car_id
+  const blocksMap = useMemo(() => {
+    const map: Record<number, CalendarBlock[]> = {}
+    calendarBlocks.forEach((b) => {
+      if (!map[b.car_id]) map[b.car_id] = []
+      map[b.car_id].push(b)
+    })
+    return map
+  }, [calendarBlocks])
+
+  // Simple getBlockForCell - uses blocksMap for fast lookup
   function getBlockForCell(carId: number, date: Date): CalendarBlock | null {
-    getBlockForCellCallCount++
-    const dayStr = format(date, "yyyy-MM-dd")
+    const carBlocks = blocksMap[carId] || []
+    if (carBlocks.length === 0) return null
     
-    // Find block where car_id matches and date is between start_date and end_date
-    return calendarBlocks.find((b) => 
-      b.car_id === carId && 
+    const dayStr = format(date, "yyyy-MM-dd")
+    return carBlocks.find((b) => 
       dayStr >= b.start_date && 
       dayStr <= b.end_date
     ) || null
   }
-  
-  // Log call count at end of render
-  console.log("[v0] getBlockForCell calls this render:", getBlockForCellCallCount)
-  getBlockForCellCallCount = 0 // Reset for next render
 
   // Check if cell is selected
   function isCellSelected(carId: number, date: Date): boolean {
