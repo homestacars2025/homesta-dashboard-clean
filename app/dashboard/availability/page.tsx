@@ -308,29 +308,41 @@ export default function AvailabilityPage() {
 
   // Precompute blocksMap: group blocks by car_id for O(1) lookup
   // Memoized ONLY by calendarBlocks - no other dependencies
+  // Use Number(car_id) to ensure consistent numeric keys
   const blocksMap = useMemo(() => {
     const map: Record<number, CalendarBlock[]> = {}
     calendarBlocks.forEach((b) => {
-      if (!map[b.car_id]) map[b.car_id] = []
-      map[b.car_id].push(b)
+      const carIdNum = Number(b.car_id)
+      if (!map[carIdNum]) map[carIdNum] = []
+      map[carIdNum].push(b)
     })
+    console.log("[v0] blocksMap built:", { keys: Object.keys(map), totalBlocks: calendarBlocks.length })
     return map
   }, [calendarBlocks])
 
   // Plain function - NOT memoized to avoid dependency loops
   // Uses blocksMap directly from closure
   function getBlockForCell(carId: number, date: Date): CalendarBlock | null {
-    const carBlocks = blocksMap[carId] || []
+    // Ensure numeric car_id comparison
+    const carIdNum = Number(carId)
+    const carBlocks = blocksMap[carIdNum] || []
     if (carBlocks.length === 0) return null
     
-    // Convert cell date to YYYY-MM-DD string for comparison
-    const cellDateStr = format(date, "yyyy-MM-dd")
+    // Convert cell date to YYYY-MM-DD using toISOString for consistent format
+    const dayStr = new Date(date).toISOString().split("T")[0]
     
-    // Find block where cellDate falls within start_date and end_date (inclusive)
-    return carBlocks.find((b) => 
-      cellDateStr >= b.start_date && 
-      cellDateStr <= b.end_date
-    ) || null
+    // Find block where dayStr falls within start_date and end_date (inclusive)
+    const found = carBlocks.find((b) => {
+      const start = new Date(b.start_date).toISOString().split("T")[0]
+      const end = new Date(b.end_date).toISOString().split("T")[0]
+      
+      // Debug log
+      console.log("[v0] getBlockForCell:", { carId: carIdNum, blockCarId: b.car_id, dayStr, start, end, block_type: b.block_type })
+      
+      return dayStr >= start && dayStr <= end
+    })
+    
+    return found || null
   }
 
   // Check if cell is selected - must be defined before getCellStyle
