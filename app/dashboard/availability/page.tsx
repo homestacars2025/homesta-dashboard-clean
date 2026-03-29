@@ -235,7 +235,7 @@ export default function AvailabilityPage() {
           .lte("start_date", endDate)
           .gte("end_date", startDate)
 
-        console.log("[v0] car_calender query result:", { data: calenderData, error: calenderError })
+        console.log("[v0] car_calender RAW query result:", { data: calenderData, error: calenderError, carIds, startDate, endDate })
 
         if (calenderError) {
           // Log error but don't throw - calendar should still render with empty blocks
@@ -249,6 +249,7 @@ export default function AvailabilityPage() {
             end_date: c.end_date,
             block_type: c.block_type
           }))
+          console.log("[v0] Mapped calendarBlocks:", calendarBlocks)
         }
       } catch (calErr) {
         // Gracefully handle car_calender errors - show empty calendar
@@ -314,17 +315,28 @@ export default function AvailabilityPage() {
     })
   }, [currentMonth])
 
+  // Debug: Log when calendarBlocks state changes
+  useEffect(() => {
+    console.log("[v0] calendarBlocks STATE updated:", calendarBlocks)
+  }, [calendarBlocks])
+
   // Get block for a specific car and date
   // Checks if dateStr is between start_date and end_date (inclusive)
   const getBlockForCell = useCallback(
     (carId: number, date: Date): CalendarBlock | null => {
       const dateStr = format(date, "yyyy-MM-dd")
-      const block = calendarBlocks.find(
-        (b) => b.car_id === carId && dateStr >= b.start_date && dateStr <= b.end_date
-      ) || null
       
-      // Debug log for each day - shows date and block_type mapping
-      console.log(`[v0] Day: ${dateStr}, CarID: ${carId}, block_type: ${block?.block_type || "NO_RECORD (parking)"}, block:`, block)
+      // Debug: log total blocks available and search for this car
+      const blocksForCar = calendarBlocks.filter((b) => b.car_id === carId)
+      
+      // Find block where this date falls between start_date and end_date (inclusive)
+      const block = calendarBlocks.find((b) => {
+        const matches = b.car_id === carId && dateStr >= b.start_date && dateStr <= b.end_date
+        return matches
+      }) || null
+      
+      // Debug log for each day
+      console.log(`[v0] getBlockForCell: date=${dateStr}, carId=${carId}, totalBlocks=${calendarBlocks.length}, blocksForCar=${blocksForCar.length}, foundBlock:`, block)
       
       return block
     },
