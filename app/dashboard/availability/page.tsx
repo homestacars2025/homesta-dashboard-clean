@@ -64,6 +64,7 @@ const getStatusLabel = (status: string | null) => {
 }
 
 // Preview color based on hovered action
+// Color mapping: maintenance=grey, selling=orange, replacement=yellow, booked_confirmed=green
 const getPreviewStyle = (action: "booking" | "maintenance" | "selling" | "replacement" | null) => {
   const baseClasses = "h-11 w-11 min-w-[44px] max-w-[48px] rounded-xl transition-all duration-200 cursor-pointer text-center text-xs font-semibold border-2 relative shadow-sm"
   
@@ -73,35 +74,35 @@ const getPreviewStyle = (action: "booking" | "maintenance" | "selling" | "replac
     case "maintenance":
       return `${baseClasses} bg-gray-100 border-gray-400 text-gray-700`
     case "selling":
-      return `${baseClasses} bg-yellow-100 border-yellow-400 text-yellow-800`
-    case "replacement":
+      // Orange for selling
       return `${baseClasses} bg-orange-100 border-orange-400 text-orange-800`
+    case "replacement":
+      // Yellow for replacement
+      return `${baseClasses} bg-yellow-100 border-yellow-400 text-yellow-800`
     default:
-      // Neutral preview - light blue with dashed border
-      return `${baseClasses} bg-blue-50 border-blue-300 border-dashed text-blue-700`
+      // Neutral preview - light gray with dashed border (no blue)
+      return `${baseClasses} bg-gray-50 border-gray-300 border-dashed text-gray-700`
   }
 }
 
-// Calendar block colors based on block_type
+// Calendar block colors based on block_type from car_calender table ONLY
+// Color mapping: maintenance=grey, selling=orange, replacement=yellow, booked_confirmed=green, parking/no record=red
 const getBlockStyle = (blockType: string) => {
   const baseClasses = "h-11 w-11 min-w-[44px] max-w-[48px] rounded-xl transition-all cursor-pointer text-center text-xs font-semibold border relative"
   
   switch (blockType.toLowerCase()) {
     case "booked_confirmed":
-      // Green for confirmed bookings (working)
+      // Green for confirmed bookings
       return `${baseClasses} bg-green-100 border-green-300 text-green-800 hover:bg-green-200`
-    case "booked_pending":
-      // Blue for pending/reserved bookings
-      return `${baseClasses} bg-blue-100 border-blue-300 text-blue-800 hover:bg-blue-200`
     case "maintenance":
-      // Gray for maintenance
+      // Grey for maintenance
       return `${baseClasses} bg-gray-100 border-gray-300 text-gray-700 hover:bg-gray-200`
     case "selling":
-      // Yellow for selling
-      return `${baseClasses} bg-yellow-100 border-yellow-300 text-yellow-800 hover:bg-yellow-200`
-    case "replacement":
-      // Orange for replacement
+      // Orange for selling
       return `${baseClasses} bg-orange-100 border-orange-300 text-orange-800 hover:bg-orange-200`
+    case "replacement":
+      // Yellow for replacement
+      return `${baseClasses} bg-yellow-100 border-yellow-300 text-yellow-800 hover:bg-yellow-200`
     default:
       // Red for parking (no record = parking)
       return `${baseClasses} bg-red-100 border-red-300 text-red-700 hover:bg-red-200`
@@ -212,24 +213,9 @@ export default function AvailabilityPage() {
         status: statusMap.get(car.id) || null
       }))
 
-      // Fetch bookings to build calendar blocks from existing bookings table
-      const { data: bookingsData } = await supabase
-        .from("bookings")
-        .select("id, car_id, start_date, end_date, status")
-        .in("status", ["confirmed", "pending"])
-        .lte("start_date", endDate)
-        .gte("end_date", startDate)
-
-      // Convert bookings to calendar block format
-      const blocksFromBookings = (bookingsData || []).map((b: any) => ({
-        id: b.id,
-        car_id: b.car_id,
-        start_date: b.start_date,
-        end_date: b.end_date,
-        block_type: b.status === "confirmed" ? "booked_confirmed" : "booked_pending"
-      }))
-
-      // Fetch blocks from car_calender table (maintenance, selling, replacement)
+      // Fetch ALL blocks from car_calender table ONLY
+      // This includes: booked_confirmed, maintenance, selling, replacement
+      // NO data from bookings table - calendar relies 100% on car_calender
       const { data: calenderData, error: calenderError } = await supabase
         .from("car_calender")
         .select("id, car_id, start_date, end_date, block_type")
@@ -237,8 +223,10 @@ export default function AvailabilityPage() {
         .lte("start_date", endDate)
         .gte("end_date", startDate)
 
+      if (calenderError) throw calenderError
+
       // Convert car_calender records to calendar block format
-      const blocksFromCalender = (calenderData || []).map((c: any) => ({
+      const calendarBlocks = (calenderData || []).map((c: any) => ({
         id: c.id,
         car_id: c.car_id,
         start_date: c.start_date,
@@ -246,13 +234,10 @@ export default function AvailabilityPage() {
         block_type: c.block_type
       }))
 
-      // Merge all blocks together
-      const allBlocks = [...blocksFromBookings, ...blocksFromCalender]
-
       if (reqId !== reqRef.current) return
 
       setCars(carsWithImages)
-      setCalendarBlocks(allBlocks)
+      setCalendarBlocks(calendarBlocks)
       hasLoadedOnceRef.current = true
     } catch (err: any) {
       if (reqId !== reqRef.current) return
@@ -492,23 +477,10 @@ export default function AvailabilityPage() {
     }
   }
 
-  // Delete block - handle both car_calender blocks and booking blocks
+  // Delete block from car_calender table
   const handleDeleteBlock = async (blockId: number | undefined, blockType?: string) => {
     if (!blockId) return
 
-    // Booking blocks must be managed via bookings page
-    if (blockType === "booked_confirmed" || blockType === "booked_pending") {
-      toast({ 
-        title: "Cannot delete from here", 
-        description: "Bookings must be managed from the Bookings page", 
-        variant: "destructive" 
-      })
-      setShowDetailModal(false)
-      setSelectedBlock(null)
-      return
-    }
-
-    // Delete from car_calender table (maintenance, selling, replacement)
     try {
       const supabase = getSupabaseBrowserClient()
       
@@ -658,7 +630,7 @@ export default function AvailabilityPage() {
               </SelectContent>
             </Select>
 
-            {/* Legend */}
+            {/* Legend - Colors from car_calender block_type only */}
             <div className="flex items-center gap-4 ml-auto text-xs flex-wrap">
               <div className="flex items-center gap-1.5">
                 <div className="w-3 h-3 rounded bg-red-400" />
@@ -669,19 +641,15 @@ export default function AvailabilityPage() {
                 <span className="text-gray-600">Booked</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded bg-blue-400" />
-                <span className="text-gray-600">Reserved</span>
-              </div>
-              <div className="flex items-center gap-1.5">
                 <div className="w-3 h-3 rounded bg-gray-400" />
                 <span className="text-gray-600">Maintenance</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded bg-yellow-400" />
+                <div className="w-3 h-3 rounded bg-orange-400" />
                 <span className="text-gray-600">Selling</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded bg-orange-400" />
+                <div className="w-3 h-3 rounded bg-yellow-400" />
                 <span className="text-gray-600">Replacement</span>
               </div>
             </div>
@@ -726,7 +694,7 @@ export default function AvailabilityPage() {
                   onClick={() => handleCreateBlock("selling")}
                   size="sm"
                   variant="outline"
-                  className="border-yellow-300 hover:bg-yellow-100 hover:border-yellow-400 rounded-lg transition-all duration-200"
+                  className="border-orange-300 hover:bg-orange-100 hover:border-orange-400 rounded-lg transition-all duration-200"
                   onMouseEnter={() => setHoveredAction("selling")}
                   onMouseLeave={() => setHoveredAction(null)}
                 >
@@ -737,7 +705,7 @@ export default function AvailabilityPage() {
                   onClick={() => handleCreateBlock("replacement")}
                   size="sm"
                   variant="outline"
-                  className="border-orange-300 hover:bg-orange-100 hover:border-orange-400 rounded-lg transition-all duration-200"
+                  className="border-yellow-300 hover:bg-yellow-100 hover:border-yellow-400 rounded-lg transition-all duration-200"
                   onMouseEnter={() => setHoveredAction("replacement")}
                   onMouseLeave={() => setHoveredAction(null)}
                 >
