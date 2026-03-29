@@ -229,10 +229,36 @@ export default function AvailabilityPage() {
         block_type: b.status === "confirmed" ? "booked_confirmed" : "booked_pending"
       }))
 
+      // Fetch blocks from car_calender table (maintenance, selling, replacement)
+      const { data: calenderData, error: calenderError } = await supabase
+        .from("car_calender")
+        .select("id, car_id, start_date, end_date, block_type")
+        .in("car_id", carIds)
+        .lte("start_date", endDate)
+        .gte("end_date", startDate)
+
+      console.log("[v0] car_calender data fetched:", calenderData)
+      console.log("[v0] car_calender error:", calenderError)
+
+      // Convert car_calender records to calendar block format
+      const blocksFromCalender = (calenderData || []).map((c: any) => ({
+        id: c.id,
+        car_id: c.car_id,
+        start_date: c.start_date,
+        end_date: c.end_date,
+        block_type: c.block_type
+      }))
+
+      console.log("[v0] blocksFromCalender mapped:", blocksFromCalender)
+
+      // Merge all blocks together
+      const allBlocks = [...blocksFromBookings, ...blocksFromCalender]
+      console.log("[v0] Total calendar blocks:", allBlocks.length)
+
       if (reqId !== reqRef.current) return
 
       setCars(carsWithImages)
-      setCalendarBlocks(blocksFromBookings)
+      setCalendarBlocks(allBlocks)
       hasLoadedOnceRef.current = true
     } catch (err: any) {
       if (reqId !== reqRef.current) return
@@ -439,30 +465,87 @@ export default function AvailabilityPage() {
     setShowBlockModal(true)
   }
 
-  // Manual block creation is disabled - car_calendar table does not exist
-  // All calendar data now comes from bookings table only
+  // Submit block to car_calender table
   const handleSubmitBlock = async () => {
-    toast({ 
-      title: "Feature unavailable", 
-      description: "Manual blocks are not currently supported. Please create bookings instead.", 
-      variant: "destructive" 
-    })
-    setShowBlockModal(false)
-    clearSelection()
+    try {
+      const supabase = getSupabaseBrowserClient()
+      
+      const { data, error } = await supabase
+        .from("car_calender")
+        .insert({
+          car_id: blockForm.car_id,
+          start_date: blockForm.start_date,
+          end_date: blockForm.end_date,
+          block_type: blockForm.block_type,
+        })
+        .select()
+
+      console.log("[v0] Block insert result:", data)
+      console.log("[v0] Block insert error:", error)
+
+      if (error) throw error
+
+      toast({ 
+        title: "Block created", 
+        description: `${blockForm.block_type.charAt(0).toUpperCase() + blockForm.block_type.slice(1)} block created successfully.` 
+      })
+      setShowBlockModal(false)
+      clearSelection()
+      loadData() // Refresh calendar
+    } catch (err: any) {
+      console.error("[v0] Error creating block:", err)
+      toast({ 
+        title: "Error", 
+        description: err.message || "Failed to create block", 
+        variant: "destructive" 
+      })
+    }
   }
 
-  // Delete block - booking blocks must be managed via bookings page
+  // Delete block - handle both car_calender blocks and booking blocks
   const handleDeleteBlock = async (blockId: number | undefined, blockType?: string) => {
     if (!blockId) return
 
-    // All blocks are now from bookings - redirect to bookings page
-    toast({ 
-      title: "Cannot delete from here", 
-      description: "Bookings must be managed from the Bookings page", 
-      variant: "destructive" 
-    })
-    setShowDetailModal(false)
-    setSelectedBlock(null)
+    // Booking blocks must be managed via bookings page
+    if (blockType === "booked_confirmed" || blockType === "booked_pending") {
+      toast({ 
+        title: "Cannot delete from here", 
+        description: "Bookings must be managed from the Bookings page", 
+        variant: "destructive" 
+      })
+      setShowDetailModal(false)
+      setSelectedBlock(null)
+      return
+    }
+
+    // Delete from car_calender table (maintenance, selling, replacement)
+    try {
+      const supabase = getSupabaseBrowserClient()
+      
+      const { error } = await supabase
+        .from("car_calender")
+        .delete()
+        .eq("id", blockId)
+
+      console.log("[v0] Block delete error:", error)
+
+      if (error) throw error
+
+      toast({ 
+        title: "Block deleted", 
+        description: "Block has been removed successfully." 
+      })
+      setShowDetailModal(false)
+      setSelectedBlock(null)
+      loadData() // Refresh calendar
+    } catch (err: any) {
+      console.error("[v0] Error deleting block:", err)
+      toast({ 
+        title: "Error", 
+        description: err.message || "Failed to delete block", 
+        variant: "destructive" 
+      })
+    }
   }
 
   // Filter and sort cars based on status from car_availability view
