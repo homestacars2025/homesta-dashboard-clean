@@ -237,9 +237,6 @@ export default function AvailabilityPage() {
         .lte("start_date", endDate)
         .gte("end_date", startDate)
 
-      console.log("[v0] car_calender data fetched:", calenderData)
-      console.log("[v0] car_calender error:", calenderError)
-
       // Convert car_calender records to calendar block format
       const blocksFromCalender = (calenderData || []).map((c: any) => ({
         id: c.id,
@@ -249,11 +246,8 @@ export default function AvailabilityPage() {
         block_type: c.block_type
       }))
 
-      console.log("[v0] blocksFromCalender mapped:", blocksFromCalender)
-
       // Merge all blocks together
       const allBlocks = [...blocksFromBookings, ...blocksFromCalender]
-      console.log("[v0] Total calendar blocks:", allBlocks.length)
 
       if (reqId !== reqRef.current) return
 
@@ -480,9 +474,6 @@ export default function AvailabilityPage() {
         })
         .select()
 
-      console.log("[v0] Block insert result:", data)
-      console.log("[v0] Block insert error:", error)
-
       if (error) throw error
 
       toast({ 
@@ -493,7 +484,6 @@ export default function AvailabilityPage() {
       clearSelection()
       loadData() // Refresh calendar
     } catch (err: any) {
-      console.error("[v0] Error creating block:", err)
       toast({ 
         title: "Error", 
         description: err.message || "Failed to create block", 
@@ -527,8 +517,6 @@ export default function AvailabilityPage() {
         .delete()
         .eq("id", blockId)
 
-      console.log("[v0] Block delete error:", error)
-
       if (error) throw error
 
       toast({ 
@@ -539,7 +527,6 @@ export default function AvailabilityPage() {
       setSelectedBlock(null)
       loadData() // Refresh calendar
     } catch (err: any) {
-      console.error("[v0] Error deleting block:", err)
       toast({ 
         title: "Error", 
         description: err.message || "Failed to delete block", 
