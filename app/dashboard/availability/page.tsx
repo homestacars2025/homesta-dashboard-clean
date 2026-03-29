@@ -227,28 +227,47 @@ export default function AvailabilityPage() {
       // NO data from bookings table - calendar relies 100% on car_calender
       let fetchedBlocks: any[] = []
       
+      // Create a plate_number map from carsData for matching
+      const plateMap = new Map<number, string>()
+      ;(carsData || []).forEach((c: any) => {
+        plateMap.set(c.id, c.plate_number)
+      })
+      console.log("[v0] plateMap (cars.id -> plate_number):", Object.fromEntries(plateMap))
+
       try {
+        // Fetch car_calender with JOIN to cars table to get plate_number
         const { data: calenderData, error: calenderError } = await supabase
           .from("car_calender")
-          .select("id, car_id, start_date, end_date, block_type")
-          .in("car_id", carIds)
+          .select("id, car_id, start_date, end_date, block_type, cars!car_calender_car_id_fkey(id, plate_number)")
           .lte("start_date", endDate)
           .gte("end_date", startDate)
 
-        console.log("[v0] car_calender RAW query result:", { data: calenderData, error: calenderError, carIds, startDate, endDate })
+        console.log("[v0] car_calender RAW query result:", { data: calenderData, error: calenderError, startDate, endDate })
 
         if (calenderError) {
           // Log error but don't throw - calendar should still render with empty blocks
           console.error("[v0] car_calender query error:", calenderError)
         } else {
           // Convert car_calender records to calendar block format
-          fetchedBlocks = (calenderData || []).map((c: any) => ({
-            id: c.id,
-            car_id: c.car_id,
-            start_date: c.start_date,
-            end_date: c.end_date,
-            block_type: c.block_type
-          }))
+          // Use cars.id from the join as the matching car_id
+          fetchedBlocks = (calenderData || []).map((c: any) => {
+            const joinedCarId = c.cars?.id || c.car_id
+            const joinedPlate = c.cars?.plate_number || "UNKNOWN"
+            console.log("[v0] Block mapping:", { 
+              block_car_id: c.car_id, 
+              joined_car_id: joinedCarId,
+              joined_plate: joinedPlate,
+              block_type: c.block_type 
+            })
+            return {
+              id: c.id,
+              car_id: joinedCarId, // Use joined car.id for matching
+              plate_number: joinedPlate,
+              start_date: c.start_date,
+              end_date: c.end_date,
+              block_type: c.block_type
+            }
+          })
           console.log("[v0] Fetched blocks from car_calender:", fetchedBlocks)
         }
       } catch (calErr) {
@@ -336,6 +355,14 @@ export default function AvailabilityPage() {
         // Convert block.car_id to number for type-safe comparison
         const blockCarIdNum = Number(b.car_id)
         
+        // Debug: log car_id comparison with plate_number
+        console.log("[v0] car_id check:", { 
+          ui_car_id: carIdNum, 
+          block_car_id: blockCarIdNum, 
+          block_plate: b.plate_number,
+          match: carIdNum === blockCarIdNum 
+        })
+        
         // Check car_id match first
         if (carIdNum !== blockCarIdNum) return false
         
@@ -348,7 +375,7 @@ export default function AvailabilityPage() {
       })
       
       // Debug: log all matches found
-      console.log("[v0] MATCHES:", { cellDateStr, carIdNum, matchCount: matches.length, matches })
+      console.log("[v0] MATCHES:", { cellDateStr, carIdNum, matchCount: matches.length, blockTypes: matches.map(m => m.block_type) })
       
       // Return first match or null
       return matches[0] || null
