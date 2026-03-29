@@ -64,47 +64,56 @@ const getStatusLabel = (status: string | null) => {
 }
 
 // Preview color based on hovered action
-// Color mapping: maintenance=grey, selling=orange, replacement=yellow, booked_confirmed=green
+// EXACT COLOR MAPPING: booking=green, maintenance=grey, selling=red, replacement=orange
 const getPreviewStyle = (action: "booking" | "maintenance" | "selling" | "replacement" | null) => {
   const baseClasses = "h-11 w-11 min-w-[44px] max-w-[48px] rounded-xl transition-all duration-200 cursor-pointer text-center text-xs font-semibold border-2 relative shadow-sm"
   
   switch (action) {
     case "booking":
+      // GREEN for booking
       return `${baseClasses} bg-green-100 border-green-400 text-green-800`
     case "maintenance":
+      // GREY for maintenance
       return `${baseClasses} bg-gray-100 border-gray-400 text-gray-700`
     case "selling":
-      // Orange for selling
-      return `${baseClasses} bg-orange-100 border-orange-400 text-orange-800`
+      // RED for selling
+      return `${baseClasses} bg-red-100 border-red-400 text-red-700`
     case "replacement":
-      // Yellow for replacement
-      return `${baseClasses} bg-yellow-100 border-yellow-400 text-yellow-800`
+      // ORANGE for replacement
+      return `${baseClasses} bg-orange-100 border-orange-400 text-orange-800`
     default:
-      // Neutral preview - light gray with dashed border (no blue)
+      // Neutral preview - light gray with dashed border
       return `${baseClasses} bg-gray-50 border-gray-300 border-dashed text-gray-700`
   }
 }
 
 // Calendar block colors based on block_type from car_calender table ONLY
-// Color mapping: maintenance=grey, selling=orange, replacement=yellow, booked_confirmed=green, parking/no record=red
+// EXACT COLOR MAPPING:
+// - NO record = RED (parking)
+// - booked_confirmed = GREEN
+// - selling = RED
+// - maintenance = GREY
+// - replacement = ORANGE
 const getBlockStyle = (blockType: string) => {
   const baseClasses = "h-11 w-11 min-w-[44px] max-w-[48px] rounded-xl transition-all cursor-pointer text-center text-xs font-semibold border relative"
   
-  switch (blockType.toLowerCase()) {
+  const type = blockType?.toLowerCase() || ""
+  
+  switch (type) {
     case "booked_confirmed":
-      // Green for confirmed bookings
+      // GREEN for confirmed bookings
       return `${baseClasses} bg-green-100 border-green-300 text-green-800 hover:bg-green-200`
     case "maintenance":
-      // Grey for maintenance
+      // GREY for maintenance
       return `${baseClasses} bg-gray-100 border-gray-300 text-gray-700 hover:bg-gray-200`
     case "selling":
-      // Orange for selling
-      return `${baseClasses} bg-orange-100 border-orange-300 text-orange-800 hover:bg-orange-200`
+      // RED for selling
+      return `${baseClasses} bg-red-100 border-red-300 text-red-700 hover:bg-red-200`
     case "replacement":
-      // Yellow for replacement
-      return `${baseClasses} bg-yellow-100 border-yellow-300 text-yellow-800 hover:bg-yellow-200`
+      // ORANGE for replacement
+      return `${baseClasses} bg-orange-100 border-orange-300 text-orange-800 hover:bg-orange-200`
     default:
-      // Red for parking (no record = parking)
+      // RED for parking (no record = parking)
       return `${baseClasses} bg-red-100 border-red-300 text-red-700 hover:bg-red-200`
   }
 }
@@ -306,12 +315,18 @@ export default function AvailabilityPage() {
   }, [currentMonth])
 
   // Get block for a specific car and date
+  // Checks if dateStr is between start_date and end_date (inclusive)
   const getBlockForCell = useCallback(
     (carId: number, date: Date): CalendarBlock | null => {
       const dateStr = format(date, "yyyy-MM-dd")
-      return calendarBlocks.find(
+      const block = calendarBlocks.find(
         (b) => b.car_id === carId && dateStr >= b.start_date && dateStr <= b.end_date
       ) || null
+      
+      // Debug log for each day - shows date and block_type mapping
+      console.log(`[v0] Day: ${dateStr}, CarID: ${carId}, block_type: ${block?.block_type || "NO_RECORD (parking)"}, block:`, block)
+      
+      return block
     },
     [calendarBlocks]
   )
@@ -642,11 +657,12 @@ export default function AvailabilityPage() {
               </SelectContent>
             </Select>
 
-            {/* Legend - Colors from car_calender block_type only */}
+            {/* Legend - EXACT colors from car_calender block_type */}
+            {/* parking/no record=RED, booked_confirmed=GREEN, maintenance=GREY, selling=RED, replacement=ORANGE */}
             <div className="flex items-center gap-4 ml-auto text-xs flex-wrap">
               <div className="flex items-center gap-1.5">
                 <div className="w-3 h-3 rounded bg-red-400" />
-                <span className="text-gray-600">Parking</span>
+                <span className="text-gray-600">Parking/Selling</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-3 h-3 rounded bg-green-400" />
@@ -658,10 +674,6 @@ export default function AvailabilityPage() {
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-3 h-3 rounded bg-orange-400" />
-                <span className="text-gray-600">Selling</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded bg-yellow-400" />
                 <span className="text-gray-600">Replacement</span>
               </div>
             </div>
@@ -706,7 +718,7 @@ export default function AvailabilityPage() {
                   onClick={() => handleCreateBlock("selling")}
                   size="sm"
                   variant="outline"
-                  className="border-orange-300 hover:bg-orange-100 hover:border-orange-400 rounded-lg transition-all duration-200"
+                  className="border-red-300 hover:bg-red-100 hover:border-red-400 rounded-lg transition-all duration-200"
                   onMouseEnter={() => setHoveredAction("selling")}
                   onMouseLeave={() => setHoveredAction(null)}
                 >
@@ -717,7 +729,7 @@ export default function AvailabilityPage() {
                   onClick={() => handleCreateBlock("replacement")}
                   size="sm"
                   variant="outline"
-                  className="border-yellow-300 hover:bg-yellow-100 hover:border-yellow-400 rounded-lg transition-all duration-200"
+                  className="border-orange-300 hover:bg-orange-100 hover:border-orange-400 rounded-lg transition-all duration-200"
                   onMouseEnter={() => setHoveredAction("replacement")}
                   onMouseLeave={() => setHoveredAction(null)}
                 >
