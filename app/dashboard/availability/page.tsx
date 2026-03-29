@@ -306,23 +306,34 @@ export default function AvailabilityPage() {
     })
   }, [currentMonth])
 
-  // Get block for a specific car and date - pure in-memory filtering only
-  // No console.log or heavy operations - runs on every cell render
+  // Precompute blocksMap: group blocks by car_id for O(1) lookup
+  // This avoids scanning ALL blocks for every cell render
+  const blocksMap = useMemo(() => {
+    const map: Record<number, CalendarBlock[]> = {}
+    calendarBlocks.forEach((b) => {
+      if (!map[b.car_id]) map[b.car_id] = []
+      map[b.car_id].push(b)
+    })
+    return map
+  }, [calendarBlocks])
+
+  // Get block for a specific car and date - uses precomputed blocksMap
+  // O(1) car lookup + small array scan instead of O(n) full scan
   const getBlockForCell = useCallback(
     (carId: number, date: Date): CalendarBlock | null => {
+      const carBlocks = blocksMap[carId] || []
+      if (carBlocks.length === 0) return null
+      
       // Convert cell date to YYYY-MM-DD string for comparison
       const cellDateStr = format(date, "yyyy-MM-dd")
       
-      // Find first matching block where:
-      // 1. car_id matches
-      // 2. cellDate falls within start_date and end_date (inclusive)
-      return calendarBlocks.find((b) => 
-        b.car_id === carId && 
+      // Find block where cellDate falls within start_date and end_date (inclusive)
+      return carBlocks.find((b) => 
         cellDateStr >= b.start_date && 
         cellDateStr <= b.end_date
       ) || null
     },
-    [calendarBlocks]
+    [blocksMap]
   )
 
   // Check if cell is selected - must be defined before getCellStyle
