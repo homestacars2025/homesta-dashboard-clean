@@ -222,64 +222,35 @@ export default function AvailabilityPage() {
         status: statusMap.get(car.id) || null
       }))
 
-      // Fetch ALL blocks from car_calender table ONLY
-      // This includes: booked_confirmed, maintenance, selling, replacement
-      // NO data from bookings table - calendar relies 100% on car_calender
-      let fetchedBlocks: any[] = []
-      
-      // Create a plate_number map from carsData for matching
-      const plateMap = new Map<number, string>()
-      ;(carsData || []).forEach((c: any) => {
-        plateMap.set(c.id, c.plate_number)
-      })
-      console.log("[v0] plateMap (cars.id -> plate_number):", Object.fromEntries(plateMap))
+      // Fetch ALL blocks from car_calender table ONCE
+      // Simple query - no complex JOINs, just get all blocks for date range
+      let fetchedBlocks: CalendarBlock[] = []
 
       try {
-        // Fetch car_calender with JOIN to cars table to get plate_number
         const { data: calenderData, error: calenderError } = await supabase
           .from("car_calender")
-          .select("id, car_id, start_date, end_date, block_type, cars!car_calender_car_id_fkey(id, plate_number)")
+          .select("id, car_id, start_date, end_date, block_type")
           .lte("start_date", endDate)
           .gte("end_date", startDate)
 
-        console.log("[v0] car_calender RAW query result:", { data: calenderData, error: calenderError, startDate, endDate })
-
-        if (calenderError) {
-          // Log error but don't throw - calendar should still render with empty blocks
-          console.error("[v0] car_calender query error:", calenderError)
-        } else {
-          // Convert car_calender records to calendar block format
-          // Use cars.id from the join as the matching car_id
-          fetchedBlocks = (calenderData || []).map((c: any) => {
-            const joinedCarId = c.cars?.id || c.car_id
-            const joinedPlate = c.cars?.plate_number || "UNKNOWN"
-            console.log("[v0] Block mapping:", { 
-              block_car_id: c.car_id, 
-              joined_car_id: joinedCarId,
-              joined_plate: joinedPlate,
-              block_type: c.block_type 
-            })
-            return {
-              id: c.id,
-              car_id: joinedCarId, // Use joined car.id for matching
-              plate_number: joinedPlate,
-              start_date: c.start_date,
-              end_date: c.end_date,
-              block_type: c.block_type
-            }
-          })
-          console.log("[v0] Fetched blocks from car_calender:", fetchedBlocks)
+        if (!calenderError && calenderData) {
+          // Map to CalendarBlock format - car_id stays as-is from DB
+          fetchedBlocks = calenderData.map((c: any) => ({
+            id: c.id,
+            car_id: c.car_id,
+            start_date: c.start_date,
+            end_date: c.end_date,
+            block_type: c.block_type
+          }))
         }
       } catch (calErr) {
-        // Gracefully handle car_calender errors - show empty calendar
-        console.error("[v0] car_calender fetch failed:", calErr)
+        // Gracefully handle car_calender errors - render with empty blocks
       }
 
       if (reqId !== reqRef.current) return
 
       setCars(carsWithImages)
       setCalendarBlocks(fetchedBlocks)
-      console.log("[v0] State setCalendarBlocks called with:", fetchedBlocks)
       hasLoadedOnceRef.current = true
     } catch (err: any) {
       if (reqId !== reqRef.current) return
@@ -335,50 +306,21 @@ export default function AvailabilityPage() {
     })
   }, [currentMonth])
 
-  // Debug: Log when calendarBlocks state changes
-  useEffect(() => {
-    console.log("[v0] calendarBlocks STATE updated:", calendarBlocks)
-  }, [calendarBlocks])
-
-  // Get block for a specific car and date
-  // Uses .filter() to find ALL matching blocks, then returns first match
-  // IMPORTANT: Convert car_id to number (UI may pass string, DB returns number)
+  // Get block for a specific car and date - pure in-memory filtering only
+  // No console.log or heavy operations - runs on every cell render
   const getBlockForCell = useCallback(
     (carId: number, date: Date): CalendarBlock | null => {
-      // Convert cell date to YYYY-MM-DD string
-      const cellDateStr = date.toISOString().split("T")[0]
-      // Ensure carId is a number (UI might pass string)
-      const carIdNum = Number(carId)
+      // Convert cell date to YYYY-MM-DD string for comparison
+      const cellDateStr = format(date, "yyyy-MM-dd")
       
-      // Use .filter() instead of .find() to handle multiple blocks/ranges
-      const matches = calendarBlocks.filter((b) => {
-        // Convert block.car_id to number for type-safe comparison
-        const blockCarIdNum = Number(b.car_id)
-        
-        // Debug: log car_id comparison with plate_number
-        console.log("[v0] car_id check:", { 
-          ui_car_id: carIdNum, 
-          block_car_id: blockCarIdNum, 
-          block_plate: b.plate_number,
-          match: carIdNum === blockCarIdNum 
-        })
-        
-        // Check car_id match first
-        if (carIdNum !== blockCarIdNum) return false
-        
-        // Convert block dates to YYYY-MM-DD strings for proper comparison
-        const startStr = new Date(b.start_date).toISOString().split("T")[0]
-        const endStr = new Date(b.end_date).toISOString().split("T")[0]
-        
-        // Check if cellDate falls within block date range (inclusive)
-        return cellDateStr >= startStr && cellDateStr <= endStr
-      })
-      
-      // Debug: log all matches found
-      console.log("[v0] MATCHES:", { cellDateStr, carIdNum, matchCount: matches.length, blockTypes: matches.map(m => m.block_type) })
-      
-      // Return first match or null
-      return matches[0] || null
+      // Find first matching block where:
+      // 1. car_id matches
+      // 2. cellDate falls within start_date and end_date (inclusive)
+      return calendarBlocks.find((b) => 
+        b.car_id === carId && 
+        cellDateStr >= b.start_date && 
+        cellDateStr <= b.end_date
+      ) || null
     },
     [calendarBlocks]
   )
@@ -405,12 +347,7 @@ export default function AvailabilityPage() {
     (carId: number, date: Date) => {
       const block = getBlockForCell(carId, date)
       const isSelected = isCellSelected(carId, date)
-      const dateStr = date.toISOString().split("T")[0]
-      const isToday = dateStr === new Date().toISOString().split("T")[0]
-
-      // DEBUG: Log render call
-      console.log("[v0] RENDER getCellStyle:", { dateStr, carId, block: block?.block_type || "NULL", isSelected })
-
+      const isToday = format(date, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd")
       const todayRing = isToday ? "ring-2 ring-blue-400 ring-offset-1" : ""
 
       // If cell is selected, use preview color based on hovered action
@@ -418,9 +355,8 @@ export default function AvailabilityPage() {
         return `${getPreviewStyle(hoveredAction)} ${todayRing}`
       }
 
+      // Block found - use color based on block_type
       if (block) {
-        // Block found - use color based on block_type
-        console.log("[v0] RENDER block found:", { block_type: block.block_type, style: getBlockStyle(block.block_type) })
         return `${getBlockStyle(block.block_type)} ${todayRing}`
       }
 
