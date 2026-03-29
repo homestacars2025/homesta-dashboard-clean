@@ -225,7 +225,7 @@ export default function AvailabilityPage() {
       // Fetch ALL blocks from car_calender table ONLY
       // This includes: booked_confirmed, maintenance, selling, replacement
       // NO data from bookings table - calendar relies 100% on car_calender
-      let calendarBlocks: any[] = []
+      let fetchedBlocks: any[] = []
       
       try {
         const { data: calenderData, error: calenderError } = await supabase
@@ -242,14 +242,14 @@ export default function AvailabilityPage() {
           console.error("[v0] car_calender query error:", calenderError)
         } else {
           // Convert car_calender records to calendar block format
-          calendarBlocks = (calenderData || []).map((c: any) => ({
+          fetchedBlocks = (calenderData || []).map((c: any) => ({
             id: c.id,
             car_id: c.car_id,
             start_date: c.start_date,
             end_date: c.end_date,
             block_type: c.block_type
           }))
-          console.log("[v0] Mapped calendarBlocks:", calendarBlocks)
+          console.log("[v0] Fetched blocks from car_calender:", fetchedBlocks)
         }
       } catch (calErr) {
         // Gracefully handle car_calender errors - show empty calendar
@@ -259,7 +259,8 @@ export default function AvailabilityPage() {
       if (reqId !== reqRef.current) return
 
       setCars(carsWithImages)
-      setCalendarBlocks(calendarBlocks)
+      setCalendarBlocks(fetchedBlocks)
+      console.log("[v0] State setCalendarBlocks called with:", fetchedBlocks)
       hasLoadedOnceRef.current = true
     } catch (err: any) {
       if (reqId !== reqRef.current) return
