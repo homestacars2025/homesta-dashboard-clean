@@ -384,7 +384,11 @@ export default function AvailabilityPage() {
     (carId: number, date: Date) => {
       const block = getBlockForCell(carId, date)
       const isSelected = isCellSelected(carId, date)
-      const isToday = format(date, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd")
+      const dateStr = date.toISOString().split("T")[0]
+      const isToday = dateStr === new Date().toISOString().split("T")[0]
+
+      // DEBUG: Log render call
+      console.log("[v0] RENDER getCellStyle:", { dateStr, carId, block: block?.block_type || "NULL", isSelected })
 
       const todayRing = isToday ? "ring-2 ring-blue-400 ring-offset-1" : ""
 
@@ -394,10 +398,12 @@ export default function AvailabilityPage() {
       }
 
       if (block) {
+        // Block found - use color based on block_type
+        console.log("[v0] RENDER block found:", { block_type: block.block_type, style: getBlockStyle(block.block_type) })
         return `${getBlockStyle(block.block_type)} ${todayRing}`
       }
 
-      // Default = Parking (RED) - no record in car_calendar means parking
+      // Default = Parking (RED) - no record in car_calender means parking
       return `h-11 w-11 min-w-[44px] max-w-[48px] rounded-xl transition-all duration-200 cursor-pointer text-center text-xs font-semibold border relative ${todayRing} bg-red-100 border-red-300 text-red-700 hover:bg-red-200`
     },
     [getBlockForCell, hoveredAction, isCellSelected]
